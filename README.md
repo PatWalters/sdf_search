@@ -109,10 +109,15 @@ By default, searches return a maximum of 10000 results. If this limit is reached
 
 You can use the `--limit` flag to change this limit.
 
-`sdf_search.py search sub mydb  'c1ccccc1' out.csv --limit 20000`
-``
+```
+sdf_search.py search sub mydb  'c1ccccc1' out.csv --limit 20000
+```
 
-### Acknowledgements
+## Caveats
+This script assumes you have a properly formatted SDF with the same data fields for each record. I can't guarantee
+the results if this is not the case.
+
+## Acknowledgements
 This script is just a simple wrapper around the [FPSim2](https://github.com/chembl/FPSim2) 
 and [DuckDB](https://duckdb.org/) libraries, both of which are amazing open source projects developed by 
 people who are much more clever than I am. Please consider supporting these projects if you find this script useful.
