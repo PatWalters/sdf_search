@@ -299,7 +299,7 @@ def cli():
 @click.argument("sdf_name", type=click.Path(exists=True))
 @click.argument("outfile_prefix", type=click.Path())
 def build_db_cmd(sdf_name, outfile_prefix):
-    """Build FpSim2, and DuckDB databases from SDF."""
+    """Build FpSim2 and DuckDB databases from an SDF."""
     build_sdf_database(sdf_name, outfile_prefix)
 
 @cli.command("search")
@@ -310,7 +310,7 @@ def build_db_cmd(sdf_name, outfile_prefix):
 @click.option("--limit", default=10000, show_default=True, help="Maximum number of hits to return.")
 @click.option("--threshold", default=0.35, show_default=True, help="Similarity threshold (for similarity search only).")
 def search_cmd(search_type, prefix, query_smiles, outfile_name, limit, threshold):
-    """Run a similarity or substructure search."""
+    """Run a similarity or substructure search"""
     process_search(search_type, prefix, query_smiles, outfile_name, limit_size=limit, threshold=threshold)
 
 if __name__ == "__main__":
