@@ -10,7 +10,7 @@ cd sdf_search
 pip install .
 ```
 
-Then put the script sdf_search.py somewhere in your PATH.
+Then put the script `sdf_search.py` somewhere in your PATH.
 
 ## TLDR
 
