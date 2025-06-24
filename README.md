@@ -24,7 +24,7 @@ sdf_search.py search [sub|sim] db_name query output.[csv|sdf] [--limit N] [--thr
 
 The script `sdf_search.py` is a straightforward command-line Python program designed for performing substructure and similarity searches on chemical structures and data extracted from SD files. I often encounter situations where I need to search an SDF for structures containing a specific substructure or similar to a compound of interest. While there are various graphical interfaces available to load structures into, I prefer working from the [command line](https://www.amazon.com/Beginning-Was-Command-Line-ebook/dp/B0011GA08E/). I wanted a simple utility that could convert an SDF into a database and then perform substructure or similarity searches. The script operates in two modes, which are specified by the first command line argument.
 
-- `build` - transform an SDF into a searchable databaase  
+- `build` - transform an SDF into a searchable database  
 - `search` - perform a **sub**structure or **sim**ilarity search on the database created in the `build` phase
 
 ## Building a database
