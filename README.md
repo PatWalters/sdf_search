@@ -12,7 +12,7 @@ pip install .
 
 Then put the script `sdf_search.py` somewhere in your PATH.
 
-## TLDR
+## TL;DR
 
 ```
 sdf_search.py build infile.sdf db_name
