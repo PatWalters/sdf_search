@@ -1,4 +1,6 @@
-# sdf_search
+# sdf_search      
+
+<img src="https://raw.githubusercontent.com/PatWalters/sdf_search/refs/heads/main/robot_with_keys.png" width="400" alt="a robot looking for its keys under a lamp post"/>      
 
 ## Installation
 
