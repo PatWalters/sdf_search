@@ -5,7 +5,6 @@ from rdkit.Chem import PandasTools
 from tqdm.auto import tqdm
 import csv
 from contextlib import ExitStack
-import sys
 import os
 import subprocess
 import duckdb
@@ -289,16 +288,6 @@ def process_search(
             print("No hits found.")
     except Exception as e:
         print(f"Error in process_search: {e}")
-
-
-
-
-def main(sdf_name, outfile_prefix):
-    query_smiles = "c1ccccc1N"
-    outfile_name = "out.csv"# Example query SMILES, replace with actual query
-    process_search("substructure", outfile_prefix, query_smiles, outfile_name, limit_size=10000)
-    sim_smiles = "Nc1ccc(Oc2ncccn2)cc1"
-    process_search("similarity", outfile_prefix, sim_smiles, outfile_name, limit_size=10000)
 
 
 @click.group()
