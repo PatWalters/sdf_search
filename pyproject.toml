@@ -1,0 +1,14 @@
+[project]
+name = "sdf-search"
+version = "0.1.0"
+description = "Simple substructure and similarity search"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.2.1",
+    "duckdb>=1.3.1",
+    "fpsim2>=0.7.3",
+    "pandas>=2.3.0",
+    "rdkit>=2025.3.3",
+    "tqdm>=4.67.1",
+]
