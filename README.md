@@ -43,7 +43,8 @@ As an example, let's assume we want to create a database from the 11 million com
 
 This process will create two files.
 
-- `ams.h5`  an HDF5 file containing a molecule index and the fingerprints for the molecules.  
+- `ams_sub.h5`  an HDF5 file containing a molecule index and the fingerprints for substructure searching
+- `ams_sim.h5`  an HDF5 file containing a molecule index and the fingerprints for similarity searching
 - `ams.ddb`  a DuckDB database containing all the data fields in the SDF.
 
 ## Searching a database

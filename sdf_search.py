@@ -301,7 +301,7 @@ def process_search(
         search_type: 'similarity' or 'substructure'.
         prefix: Prefix for the input database files.
         query_smiles: Query molecule in SMILES format.
-        outfile_name: Output file name (.sdf or .csv).
+        outfile_name: Output file name (.sdf or .csv). If None, returns a DataFrame.
         threshold: Similarity threshold (for similarity search only).
         limit_size: Maximum number of hits to return.
     """
@@ -321,7 +321,7 @@ def process_search(
             print(f"Unknown search type: {search_type}")
             return
 
-        if outfile_name is not None:
+        if outfile_name is None:
             return search_res
 
         if search_res is not None and not search_res.empty:
