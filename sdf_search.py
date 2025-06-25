@@ -13,6 +13,7 @@ from functools import wraps
 from FPSim2 import FPSim2Engine
 import pandas as pd
 import click
+from typing import List
 
 def timed(func):
     """
@@ -65,22 +66,33 @@ def process_sdf(sdf_name: str, base_name: str) -> None:
         print(f"Error processing {sdf_name}: {e}")
 
 @timed
-def build_fpsim2_database(smi_name: str, h5_name: str) -> int:
+def build_fpsim2_database(smi_name: str, h5_name: str, db_type: str) -> int:
     """
     Builds an FpSim2 database from a SMILES file.
 
     Args:
         smi_name: Path to the input SMILES file.
         h5_name: Path to the output HDF5 database file.
+        db_type: Type of fingerprint ('sim' or 'sub').
 
     Returns:
         0 if successful, 1 otherwise.
     """
-    if os.path.isfile(h5_name):
-        os.remove(h5_name)
+    param_dict = {
+        "sim": ['Morgan', '{"radius": 2, "fpSize": 256}'],
+        "sub": ['RDKitPattern','{"fpSize": 2048, "tautomerFingerprints": true}']
+    }
+    if db_type not in param_dict:
+        print(f"Invalid db_type: {db_type}. Must be 'sim' or 'sub'.")
+        return 1
+
+    fp_type, fp_params = param_dict[db_type]
+
     try:
+        if os.path.isfile(h5_name):
+            os.remove(h5_name)
         subprocess.run(
-            ['fpsim2-create-db', smi_name, h5_name],
+            ['fpsim2-create-db', "--fp_type", fp_type, "--fp_params", fp_params, smi_name, h5_name],
             capture_output=True,
             text=True,
             check=True
@@ -125,7 +137,8 @@ def build_sdf_database(sdf_name: str, outfile_prefix: str) -> None:
         outfile_prefix: Prefix for all output files.
     """
     smi_name = f"{outfile_prefix}.smi"
-    h5_name = f"{outfile_prefix}.h5"
+    h5_sim_name = f"{outfile_prefix}_sim.h5"
+    h5_sub_name = f"{outfile_prefix}_sub.h5"
     ddb_name = f"{outfile_prefix}.ddb"
     csv_name = f"{outfile_prefix}.csv"
 
@@ -134,14 +147,19 @@ def build_sdf_database(sdf_name: str, outfile_prefix: str) -> None:
         process_sdf(sdf_name, outfile_prefix)
         print(f"Done. Runtime: {process_sdf.last_runtime:.2f} seconds")
 
-        print(f"Building FpSim2 database {h5_name} from {smi_name}")
-        build_fpsim2_database(smi_name, h5_name)
+        print(f"Building FpSim2 substructure database {h5_sub_name} from {smi_name}")
+        build_fpsim2_database(smi_name, h5_sub_name, "sub")
+        print(f"Done. Runtime: {build_fpsim2_database.last_runtime:.2f} seconds")
+
+        print(f"Building FpSim2 similarity database {h5_sim_name} from {smi_name}")
+        build_fpsim2_database(smi_name, h5_sim_name, "sim")
         print(f"Done. Runtime: {build_fpsim2_database.last_runtime:.2f} seconds")
 
         print(f"Building DuckDB database {ddb_name} from {csv_name}")
         build_duckdb_database(ddb_name, csv_name)
         print(f"Done. Runtime: {build_duckdb_database.last_runtime:.2f} seconds")
 
+        print(f"Removing temporary files {smi_name} and {csv_name}")
         os.unlink(smi_name)
         os.unlink(csv_name)
     except Exception as e:
@@ -198,6 +216,31 @@ def similarity_search(
         print(f"Error during similarity search: {e}")
         return
 
+
+def smarts_in_smiles(smiles_list: List[str], smarts: str) -> List[bool]:
+    """
+    Returns a list of booleans indicating if the SMARTS is contained in each SMILES.
+
+    Args:
+        smiles_list: List of SMILES strings.
+        smarts: SMARTS pattern to search for.
+
+    Returns:
+        List of booleans.
+    """
+    query = Chem.MolFromSmarts(smarts)
+    if query is None:
+        raise ValueError("Invalid SMARTS pattern")
+
+    results = []
+    for smi in smiles_list:
+        mol = Chem.MolFromSmiles(smi)
+        if mol is None:
+            results.append(False)
+        else:
+            results.append(mol.HasSubstructMatch(query))
+    return results
+
 @timed
 def substructure_search(
     h5_name: str,
@@ -233,8 +276,11 @@ def substructure_search(
 
         with duckdb.connect(database=ddb_name) as conn:
             res_df = conn.execute(query, hit_idx).df()
-
-        return res_df
+        # Filter results to ensure substructure match (in case of false positives)
+        res_df['match'] = smarts_in_smiles(res_df['SMILES'].tolist(), query_smiles)
+        hit_df = res_df[res_df['match']]
+        print(f"Filtered {len(res_df) - len(hit_df)} false positives; {len(hit_df)} true matches remain.")
+        return hit_df.drop(columns=['match'])
     except Exception as e:
         print(f"Error during substructure search: {e}")
         return None
@@ -244,7 +290,7 @@ def process_search(
     search_type: str,
     prefix: str,
     query_smiles: str,
-    outfile_name: str,
+    outfile_name: str = None,
     threshold: float = 0.35,
     limit_size: int = 10000
 ) -> None:
@@ -256,21 +302,27 @@ def process_search(
         prefix: Prefix for the input database files.
         query_smiles: Query molecule in SMILES format.
         outfile_name: Output file name (.sdf or .csv).
+        threshold: Similarity threshold (for similarity search only).
         limit_size: Maximum number of hits to return.
     """
-    h5_name = f"{prefix}.h5"
+    sub_h5_name = f"{prefix}_sub.h5"
+    sim_h5_name = f"{prefix}_sim.h5"
     ddb_name = f"{prefix}.ddb"
 
+    search_res = None
     try:
         if search_type == "sim":
-            search_res = similarity_search(h5_name, ddb_name, query_smiles, limit_size=limit_size, threshold=threshold)
+            search_res = similarity_search(sim_h5_name, ddb_name, query_smiles, limit_size=limit_size, threshold=threshold)
             print(f"Runtime for similarity search: {similarity_search.last_runtime:.2f} seconds")
         elif search_type == "sub":
-            search_res = substructure_search(h5_name, ddb_name, query_smiles, limit_size=limit_size)
+            search_res = substructure_search(sub_h5_name, ddb_name, query_smiles, limit_size=limit_size)
             print(f"Runtime for substructure search: {substructure_search.last_runtime:.2f} seconds")
         else:
             print(f"Unknown search type: {search_type}")
             return
+
+        if outfile_name is not None:
+            return search_res
 
         if search_res is not None and not search_res.empty:
             search_res = search_res.fillna("")
@@ -288,6 +340,7 @@ def process_search(
             print("No hits found.")
     except Exception as e:
         print(f"Error in process_search: {e}")
+    return None
 
 
 @click.group()
