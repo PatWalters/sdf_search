@@ -1,4 +1,4 @@
-# sdf_search
+# sdf_search.py
 
 <img src="https://raw.githubusercontent.com/PatWalters/sdf_search/refs/heads/main/robot_with_keys.png" width="400" alt="a robot looking for its keys under a lamp post"/>      
 
@@ -48,7 +48,7 @@ collection, which is contained in the SDF `MarketSelectMain.sdf`.
 
 `sdf_search.py build MarketSelectMain.sdf ams`
 
-This process will create two files.
+This process will create three files.
 
 - `ams_sub.h5`  an HDF5 file containing a molecule index and the fingerprints for substructure searching
 - `ams_sim.h5`  an HDF5 file containing a molecule index and the fingerprints for similarity searching
