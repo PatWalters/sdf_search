@@ -313,6 +313,7 @@ def process_search(
     try:
         if search_type == "sim":
             search_res = similarity_search(sim_h5_name, ddb_name, query_smiles, limit_size=limit_size, threshold=threshold)
+            search_res.sort_values(by=['Tanimoto'], ascending=False, inplace=True)f
             print(f"Runtime for similarity search: {similarity_search.last_runtime:.2f} seconds")
         elif search_type == "sub":
             search_res = substructure_search(sub_h5_name, ddb_name, query_smiles, limit_size=limit_size)
