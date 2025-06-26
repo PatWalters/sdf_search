@@ -55,8 +55,9 @@ def process_sdf(sdf_name: str, base_name: str) -> None:
                     continue
                 smiles = Chem.MolToSmiles(mol)
                 prop_dict = mol.GetPropsAsDict()
+
                 if idx == 0:
-                    prop_cols = [k for k in prop_dict if k.upper() != "SMILES"]
+                    prop_cols = [k for k in prop_dict if k.upper() not in ["SMILES"]]
                     out_cols = ["SMILES", "Index"] + prop_cols
                     writer.writerow(out_cols)
                 row = [smiles, idx] + [prop_dict.get(col, "") for col in prop_cols]
@@ -313,7 +314,7 @@ def process_search(
     try:
         if search_type == "sim":
             search_res = similarity_search(sim_h5_name, ddb_name, query_smiles, limit_size=limit_size, threshold=threshold)
-            search_res.sort_values(by=['Tanimoto'], ascending=False, inplace=True)f
+            search_res.sort_values(by=['Tanimoto'], ascending=False, inplace=True)
             print(f"Runtime for similarity search: {similarity_search.last_runtime:.2f} seconds")
         elif search_type == "sub":
             search_res = substructure_search(sub_h5_name, ddb_name, query_smiles, limit_size=limit_size)
