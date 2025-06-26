@@ -95,6 +95,9 @@ You can use the `--limit` flag to change this limit.
 
 sdf_search.py search sub mydb  'c1ccccc1' out.csv --limit 20000
 
+## Jupyter Notebook
+This repository also contains a Jupyter notebook, `sdf_search.ipynb`, which demonstrates how to use the sdf_search library directly from Python code. This notebook can be a helpful resource if you want to integrate the functionality into your own Python scripts or workflows.
+
 ## Caveats
 
 This script assumes that you have a properly formatted SDF with consistent data fields for each record. I can't guarantee the results if this is not the case.
