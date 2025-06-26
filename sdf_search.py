@@ -55,7 +55,7 @@ def process_sdf(sdf_name: str, base_name: str) -> None:
                     continue
                 smiles = Chem.MolToSmiles(mol)
                 prop_dict = mol.GetPropsAsDict()
-
+                prop_dict["Title"] = mol.GetProp("_Name")
                 if idx == 0:
                     prop_cols = [k for k in prop_dict if k.upper() not in ["SMILES"]]
                     out_cols = ["SMILES", "Index"] + prop_cols
@@ -130,7 +130,7 @@ def build_duckdb_database(db_name: str, csv_name: str) -> None:
 
 def build_sdf_database(sdf_name: str, outfile_prefix: str) -> None:
     """
-    Orchestrates the conversion of an SDF file to CSV, SMILES, FpSim2, and DuckDB databases,
+    Orchestrates the conversion of an SDF to FPSim2, and DuckDB databases,
     printing the runtime for each step.
 
     Args:
@@ -324,6 +324,7 @@ def process_search(
             return
 
         if outfile_name is None:
+            print(f"Search returned {len(search_res)} results.")
             return search_res
 
         if search_res is not None and not search_res.empty:
@@ -331,6 +332,8 @@ def process_search(
             print(f"Found {len(search_res)} hits.")
             if outfile_name.lower().endswith(".sdf"):
                 PandasTools.AddMoleculeColumnToFrame(search_res, smilesCol="SMILES")
+                if "Title" in search_res.columns:
+                    [x.SetProp("_Name",str(y)) for x,y in search_res[["ROMol","Title"]].values]
                 PandasTools.WriteSDF(search_res, out=outfile_name, properties=list(search_res.columns))
             elif outfile_name.lower().endswith(".csv"):
                 search_res.to_csv(outfile_name, index=False)
