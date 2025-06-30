@@ -14,6 +14,10 @@ from FPSim2 import FPSim2Engine
 import pandas as pd
 import click
 from typing import List
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def timed(func):
     """
@@ -64,7 +68,7 @@ def process_sdf(sdf_name: str, base_name: str) -> None:
                 writer.writerow(row)
                 print(f"{smiles} {idx}", file=smi_fs)
     except Exception as e:
-        print(f"Error processing {sdf_name}: {e}")
+        logging.error(f"Error processing {sdf_name}: {e}")
 
 @timed
 def build_fpsim2_database(smi_name: str, h5_name: str, db_type: str) -> int:
@@ -84,7 +88,7 @@ def build_fpsim2_database(smi_name: str, h5_name: str, db_type: str) -> int:
         "sub": ['RDKitPattern','{"fpSize": 2048, "tautomerFingerprints": true}']
     }
     if db_type not in param_dict:
-        print(f"Invalid db_type: {db_type}. Must be 'sim' or 'sub'.")
+        logging.error(f"Invalid db_type: {db_type}. Must be 'sim' or 'sub'.")
         return 1
 
     fp_type, fp_params = param_dict[db_type]
@@ -100,10 +104,10 @@ def build_fpsim2_database(smi_name: str, h5_name: str, db_type: str) -> int:
         )
         return 0
     except subprocess.CalledProcessError as e:
-        print(f"Command failed. Stderr: {e.stderr}")
+        logging.error(f"Command failed. Stderr: {e.stderr}")
         return 1
     except Exception as e:
-        print(f"Unexpected error: {e}")
+        logging.error(f"Unexpected error: {e}")
         return 1
 
 @timed
@@ -125,8 +129,7 @@ def build_duckdb_database(db_name: str, csv_name: str) -> None:
                 FROM read_csv_auto('{csv_name}');
             """)
     except Exception as e:
-        print(f"Error building DuckDB database: {e}")
-
+        logging.error(f"Error building DuckDB database: {e}")
 
 def build_sdf_database(sdf_name: str, outfile_prefix: str) -> None:
     """
@@ -144,27 +147,27 @@ def build_sdf_database(sdf_name: str, outfile_prefix: str) -> None:
     csv_name = f"{outfile_prefix}.csv"
 
     try:
-        print(f"Reading {sdf_name} to create {csv_name} and {smi_name}")
+        logging.info(f"Reading {sdf_name} to create {csv_name} and {smi_name}")
         process_sdf(sdf_name, outfile_prefix)
-        print(f"Done. Runtime: {process_sdf.last_runtime:.2f} seconds")
+        logging.info(f"Done. Runtime: {process_sdf.last_runtime:.2f} seconds")
 
-        print(f"Building FpSim2 substructure database {h5_sub_name} from {smi_name}")
+        logging.info(f"Building FpSim2 substructure database {h5_sub_name} from {smi_name}")
         build_fpsim2_database(smi_name, h5_sub_name, "sub")
-        print(f"Done. Runtime: {build_fpsim2_database.last_runtime:.2f} seconds")
+        logging.info(f"Done. Runtime: {build_fpsim2_database.last_runtime:.2f} seconds")
 
-        print(f"Building FpSim2 similarity database {h5_sim_name} from {smi_name}")
+        logging.info(f"Building FpSim2 similarity database {h5_sim_name} from {smi_name}")
         build_fpsim2_database(smi_name, h5_sim_name, "sim")
-        print(f"Done. Runtime: {build_fpsim2_database.last_runtime:.2f} seconds")
+        logging.info(f"Done. Runtime: {build_fpsim2_database.last_runtime:.2f} seconds")
 
-        print(f"Building DuckDB database {ddb_name} from {csv_name}")
+        logging.info(f"Building DuckDB database {ddb_name} from {csv_name}")
         build_duckdb_database(ddb_name, csv_name)
-        print(f"Done. Runtime: {build_duckdb_database.last_runtime:.2f} seconds")
+        logging.info(f"Done. Runtime: {build_duckdb_database.last_runtime:.2f} seconds")
 
-        print(f"Removing temporary files {smi_name} and {csv_name}")
+        logging.info(f"Removing temporary files {smi_name} and {csv_name}")
         os.unlink(smi_name)
         os.unlink(csv_name)
     except Exception as e:
-        print(f"Error in build_sdf_database: {e}")
+        logging.error(f"Error in build_sdf_database: {e}")
 
 @timed
 def similarity_search(
@@ -191,17 +194,17 @@ def similarity_search(
         engine = FPSim2Engine(h5_name)
         sim_results = engine.similarity(query_smiles, threshold=threshold)
         if len(sim_results) == 0:
-            print("No similar molecules found.")
+            logging.info("No similar molecules found.")
             return None
 
         sim_df = pd.DataFrame(sim_results)
         if len(sim_df) > limit_size:
-            print(f"Your search returned more than {limit_size} hits. Truncating the hit list to {limit_size}.")
+            logging.warning(f"Your search returned more than {limit_size} hits. Truncating the hit list to {limit_size}.")
             sim_df = sim_df.head(limit_size)
 
         idx_list = sim_df['mol_id'].tolist()
         if not idx_list:
-            print("No valid indices found in similarity results.")
+            logging.warning("No valid indices found in similarity results.")
             return None
 
         placeholders = ','.join(['?'] * len(idx_list))
@@ -214,9 +217,8 @@ def similarity_search(
         res_df.rename(columns={'coeff': 'Tanimoto'}, inplace=True)
         return res_df
     except Exception as e:
-        print(f"Error during similarity search: {e}")
+        logging.error(f"Error during similarity search: {e}")
         return
-
 
 def smarts_in_smiles(smiles_list: List[str], smarts: str) -> List[bool]:
     """
@@ -265,11 +267,11 @@ def substructure_search(
         engine = FPSim2Engine(h5_name)
         hit_idx = engine.substructure(query_smiles)
         if len(hit_idx) == 0:
-            print("No substructure matches found.")
+            logging.info("No substructure matches found.")
             return None
 
         if len(hit_idx) > limit_size:
-            print(f"Your search returned more than {limit_size} hits. Truncating the hit list to {limit_size}.")
+            logging.warning(f"Your search returned more than {limit_size} hits. Truncating the hit list to {limit_size}.")
             hit_idx = hit_idx[:limit_size]
         hit_idx = hit_idx.tolist()
         placeholders = ','.join(['?'] * len(hit_idx))
@@ -280,10 +282,54 @@ def substructure_search(
         # Filter results to ensure substructure match (in case of false positives)
         res_df['match'] = smarts_in_smiles(res_df['SMILES'].tolist(), query_smiles)
         hit_df = res_df[res_df['match']]
-        print(f"Filtered {len(res_df) - len(hit_df)} false positives; {len(hit_df)} true matches remain.")
+        logging.info(f"Filtered {len(res_df) - len(hit_df)} false positives; {len(hit_df)} true matches remain.")
         return hit_df.drop(columns=['match'])
     except Exception as e:
-        print(f"Error during substructure search: {e}")
+        logging.error(f"Error during substructure search: {e}")
+        return None
+
+
+@timed
+def exact_search(
+    ddb_name: str,
+    query_smiles: str,
+    limit_size: int = 10000
+) -> pd.DataFrame | None:
+    """
+    Performs an exact search using DuckDB.
+
+    Args:
+        ddb_name: Path to the DuckDB database.
+        query_smiles: Query molecule in SMILES format.
+        limit_size: Maximum number of hits to return.
+
+    Returns:
+        DataFrame of matching records, or None if no hits found.
+    """
+    try:
+        # Canonicalize query SMILES
+        mol = Chem.MolFromSmiles(query_smiles)
+        if mol is None:
+            logging.error("Invalid query SMILES.")
+            return None
+        canon_smiles = Chem.MolToSmiles(mol)
+
+        query = f'SELECT * FROM sdf_data WHERE "SMILES" = ?'
+
+        with duckdb.connect(database=ddb_name) as conn:
+            res_df = conn.execute(query, [canon_smiles]).df()
+
+        if len(res_df) == 0:
+            logging.info("No exact matches found.")
+            return None
+
+        if len(res_df) > limit_size:
+            logging.warning(f"Your search returned more than {limit_size} hits. Truncating the hit list to {limit_size}.")
+            res_df = res_df.head(limit_size)
+
+        return res_df
+    except Exception as e:
+        logging.error(f"Error during exact search: {e}")
         return None
 
 
@@ -299,7 +345,7 @@ def process_search(
     Processes a similarity or substructure search and writes results to an output file.
 
     Args:
-        search_type: 'similarity' or 'substructure'.
+        search_type: 'similarity', 'substructure', or 'exact'.
         prefix: Prefix for the input database files.
         query_smiles: Query molecule in SMILES format.
         outfile_name: Output file name (.sdf or .csv). If None, returns a DataFrame.
@@ -314,22 +360,27 @@ def process_search(
     try:
         if search_type == "sim":
             search_res = similarity_search(sim_h5_name, ddb_name, query_smiles, limit_size=limit_size, threshold=threshold)
-            search_res.sort_values(by=['Tanimoto'], ascending=False, inplace=True)
-            print(f"Runtime for similarity search: {similarity_search.last_runtime:.2f} seconds")
+            if search_res is not None:
+                search_res.sort_values(by=['Tanimoto'], ascending=False, inplace=True)
+            logging.info(f"Runtime for similarity search: {similarity_search.last_runtime:.2f} seconds")
         elif search_type == "sub":
             search_res = substructure_search(sub_h5_name, ddb_name, query_smiles, limit_size=limit_size)
-            print(f"Runtime for substructure search: {substructure_search.last_runtime:.2f} seconds")
+            logging.info(f"Runtime for substructure search: {substructure_search.last_runtime:.2f} seconds")
+        elif search_type == "exact":
+            search_res = exact_search(ddb_name, query_smiles, limit_size=limit_size)
+            logging.info(f"Runtime for exact search: {exact_search.last_runtime:.2f} seconds")
         else:
-            print(f"Unknown search type: {search_type}")
+            logging.error(f"Unknown search type: {search_type}")
             return
 
         if outfile_name is None:
-            print(f"Search returned {len(search_res)} results.")
+            if search_res is not None:
+                logging.info(f"Search returned {len(search_res)} results.")
             return search_res
 
         if search_res is not None and not search_res.empty:
             search_res = search_res.fillna("")
-            print(f"Found {len(search_res)} hits.")
+            logging.info(f"Found {len(search_res)} hits.")
             if outfile_name.lower().endswith(".sdf"):
                 PandasTools.AddMoleculeColumnToFrame(search_res, smilesCol="SMILES")
                 if "Title" in search_res.columns:
@@ -338,13 +389,13 @@ def process_search(
             elif outfile_name.lower().endswith(".csv"):
                 search_res.to_csv(outfile_name, index=False)
             else:
-                print(f"Unsupported output file format: {outfile_name}")
+                logging.error(f"Unsupported output file format: {outfile_name}")
                 return
-            print(f"Search results written to {outfile_name}")
+            logging.info(f"Search results written to {outfile_name}")
         else:
-            print("No hits found.")
+            logging.info("No hits found.")
     except Exception as e:
-        print(f"Error in process_search: {e}")
+        logging.error(f"Error in process_search: {e}")
     return None
 
 
@@ -361,14 +412,14 @@ def build_db_cmd(sdf_name, outfile_prefix):
     build_sdf_database(sdf_name, outfile_prefix)
 
 @cli.command("search")
-@click.argument("search_type", type=click.Choice(["sim", "sub"]))
+@click.argument("search_type", type=click.Choice(["sim", "sub", "exact"]))
 @click.argument("prefix", type=click.Path())
 @click.argument("query_smiles")
 @click.argument("outfile_name", type=click.Path())
 @click.option("--limit", default=10000, show_default=True, help="Maximum number of hits to return.")
 @click.option("--threshold", default=0.35, show_default=True, help="Similarity threshold (for similarity search only).")
 def search_cmd(search_type, prefix, query_smiles, outfile_name, limit, threshold):
-    """Run a similarity or substructure search"""
+    """Run a similarity, substructure, or exact search"""
     process_search(search_type, prefix, query_smiles, outfile_name, limit_size=limit, threshold=threshold)
 
 if __name__ == "__main__":

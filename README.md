@@ -17,7 +17,7 @@ Then put the script `sdf_search.py` somewhere in your PATH.
 ```
 sdf_search.py build infile.sdf db_name
 
-sdf_search.py search [sub|sim] db_name query output.[csv|sdf] [--limit N] [--threshold T]
+sdf_search.py search [sub|sim|exact] db_name query output.[csv|sdf] [--limit N] [--threshold T]
 ```
 
 ## Introduction
@@ -31,7 +31,7 @@ that could convert an SDF into a database and then perform substructure or simil
 two modes, which are specified by the first command line argument.
 
 - `build` - transform an SDF into a searchable database
-- `search` - perform a **sub**structure or **sim**ilarity search on the database created in the `build` phase
+- `search` - perform a **sub**structure, **sim**ilarity, or **exact** search on the database created in the `build` phase
 
 ## Building a database
 
@@ -58,12 +58,12 @@ This process will create three files.
 
 To perform a substructure or similarity search, we use the `simsearch.py search` command. The syntax for searching is
 
-`sdf_search.py search [sub|sim] db_name query output`
+`sdf_search.py search [sub|sim|exact] db_name query output`
 
-In a hopefully intuitive way, you can specify `'sub'` to perform a substructure search or `'sim'` to perform a
-similarity search. The `db_name` parameter is the same as the one used during the `build` phase. For example, if we
+In a hopefully intuitive way, you can specify `'sub'` to perform a substructure search, `'sim'` to perform a
+similarity search, or `'exact'` to perform an exact search. The `db_name` parameter is the same as the one used during the `build` phase. For example, if we
 created `ams.h5` and `ams.bdb`, the db_name would be `'ams'`. The argument `'query'` is a SMILES string for a similarity
-search or a SMARTS string for a substructure search. To avoid errors, it's best to always quote this argument. The final
+or exact search or a SMARTS string for a substructure search. To avoid errors, it's best to always quote this argument. The final
 argument, `'output',` specifies the output file name. The output file type, which can be `csv` or `sdf`, is determined
 by the file extension.
 
@@ -98,6 +98,10 @@ By default, the Tanimoto similarity search threshold is set to 0.35. This thresh
 `--threshold` flag. If we wish to change this threshold to 0.5, we can add the flag.
 
 `sdf_search.py search sim  ams  'Nc1cccnc1'  out.csv --threshold 0.5`
+
+### Perform an exact search for 3-aminopyridine
+
+`sdf_search.py search exact ams 'Nc1cccnc1' out.csv`
 
 ### Search limits
 
